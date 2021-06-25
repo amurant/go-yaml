@@ -33,8 +33,8 @@ import (
 var marshalIntTest = 123
 
 var marshalTests = []struct {
-	value interface{}
-	data  string
+	value   interface{}
+	data    string
 	compact string
 }{
 	{
