@@ -24,6 +24,8 @@ package yaml
 
 import (
 	"io"
+
+	"gopkg.in/yaml.v3/reader"
 )
 
 func yaml_insert_token(parser *yaml_parser_t, pos int, token *yaml_token_t) {
@@ -41,6 +43,8 @@ func yaml_insert_token(parser *yaml_parser_t, pos int, token *yaml_token_t) {
 	if pos < 0 {
 		return
 	}
+
+	pos -= parser.tokens_parsed
 	copy(parser.tokens[parser.tokens_head+pos+1:], parser.tokens[parser.tokens_head+pos:])
 	parser.tokens[parser.tokens_head+pos] = *token
 }
@@ -48,8 +52,8 @@ func yaml_insert_token(parser *yaml_parser_t, pos int, token *yaml_token_t) {
 // Create a new parser object.
 func yaml_parser_initialize(parser *yaml_parser_t) bool {
 	*parser = yaml_parser_t{
-		raw_buffer: make([]byte, 0, input_raw_buffer_size),
-		buffer:     make([]byte, 0, input_buffer_size),
+		lookahead: 2,
+		buffer:    make([]byte, 0, input_buffer_size),
 	}
 	return true
 }
@@ -59,53 +63,20 @@ func yaml_parser_delete(parser *yaml_parser_t) {
 	*parser = yaml_parser_t{}
 }
 
-// String read handler.
-func yaml_string_read_handler(parser *yaml_parser_t, buffer []byte) (n int, err error) {
-	if parser.input_pos == len(parser.input) {
-		return 0, io.EOF
-	}
-	n = copy(buffer, parser.input[parser.input_pos:])
-	parser.input_pos += n
-	return n, nil
-}
-
-// Reader read handler.
-func yaml_reader_read_handler(parser *yaml_parser_t, buffer []byte) (n int, err error) {
-	return parser.input_reader.Read(buffer)
-}
-
 // Set a string input.
 func yaml_parser_set_input_string(parser *yaml_parser_t, input []byte) {
-	if parser.read_handler != nil {
-		panic("must set the input source only once")
-	}
-	parser.read_handler = yaml_string_read_handler
-	parser.input = input
-	parser.input_pos = 0
+	parser.reader = reader.NewUtfDecoderForBuffer(input)
 }
 
 // Set a file input.
 func yaml_parser_set_input_reader(parser *yaml_parser_t, r io.Reader) {
-	if parser.read_handler != nil {
-		panic("must set the input source only once")
-	}
-	parser.read_handler = yaml_reader_read_handler
-	parser.input_reader = r
-}
-
-// Set the source encoding.
-func yaml_parser_set_encoding(parser *yaml_parser_t, encoding yaml_encoding_t) {
-	if parser.encoding != yaml_ANY_ENCODING {
-		panic("must set the encoding only once")
-	}
-	parser.encoding = encoding
+	parser.reader = reader.NewUtfDecoderForReader(r)
 }
 
 // Create a new emitter object.
 func yaml_emitter_initialize(emitter *yaml_emitter_t) {
 	*emitter = yaml_emitter_t{
 		buffer:     make([]byte, output_buffer_size),
-		raw_buffer: make([]byte, 0, output_raw_buffer_size),
 		states:     make([]yaml_emitter_state_t, 0, initial_stack_size),
 		events:     make([]yaml_event_t, 0, initial_queue_size),
 		best_width: -1,

@@ -27,15 +27,12 @@ const (
 	input_raw_buffer_size = 512
 
 	// The size of the input buffer.
-	// It should be possible to decode the whole raw buffer.
-	input_buffer_size = input_raw_buffer_size * 3
+	// It should be possible to decode the whole raw buffer
+	// in case it only contains 1 byte values.
+	input_buffer_size = input_raw_buffer_size
 
 	// The size of the output buffer.
 	output_buffer_size = 128
-
-	// The size of the output raw buffer.
-	// It should be possible to encode the whole output buffer.
-	output_raw_buffer_size = (output_buffer_size*2 + 2)
 
 	// The size of other stacks and queues.
 	initial_stack_size  = 16

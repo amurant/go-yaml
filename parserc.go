@@ -260,13 +260,11 @@ func yaml_parser_parse_document_start(parser *yaml_parser_t, event *yaml_event_t
 	}
 
 	// Parse extra document end indicators.
-	if !implicit {
-		for token.typ == yaml_DOCUMENT_END_TOKEN {
-			skip_token(parser)
-			token = peek_token(parser)
-			if token == nil {
-				return false
-			}
+	for token.typ == yaml_DOCUMENT_END_TOKEN {
+		skip_token(parser)
+		token = peek_token(parser)
+		if token == nil {
+			return false
 		}
 	}
 
@@ -302,10 +300,10 @@ func yaml_parser_parse_document_start(parser *yaml_parser_t, event *yaml_event_t
 		}
 
 		*event = yaml_event_t{
-			typ:        yaml_DOCUMENT_START_EVENT,
-			start_mark: token.start_mark,
-			end_mark:   token.end_mark,
-
+			typ:          yaml_DOCUMENT_START_EVENT,
+			start_mark:   token.start_mark,
+			end_mark:     token.end_mark,
+			implicit:     true,
 			head_comment: head_comment,
 		}
 
@@ -400,7 +398,14 @@ func yaml_parser_parse_document_end(parser *yaml_parser_t, event *yaml_event_t) 
 
 	parser.tag_directives = parser.tag_directives[:0]
 
-	parser.state = yaml_PARSE_DOCUMENT_START_STATE
+	// If doc end was implicit, require explicit start.
+	if implicit {
+		parser.state = yaml_PARSE_DOCUMENT_START_STATE
+		// If doc end was explicit, an implicit start is ok.
+	} else {
+		parser.state = yaml_PARSE_IMPLICIT_DOCUMENT_START_STATE
+	}
+
 	*event = yaml_event_t{
 		typ:        yaml_DOCUMENT_END_EVENT,
 		start_mark: start_mark,
@@ -857,6 +862,9 @@ func yaml_parser_parse_block_mapping_key(parser *yaml_parser_t, event *yaml_even
 			parser.state = yaml_PARSE_BLOCK_MAPPING_VALUE_STATE
 			return yaml_parser_process_empty_scalar(parser, event, mark)
 		}
+	} else if token.typ == yaml_VALUE_TOKEN && token.start_mark.index < token.end_mark.index { // A value token with a length
+		parser.state = yaml_PARSE_BLOCK_MAPPING_VALUE_STATE
+		return yaml_parser_process_empty_scalar(parser, event, token.start_mark)
 	} else if token.typ == yaml_BLOCK_END_TOKEN {
 		parser.state = parser.states[len(parser.states)-1]
 		parser.states = parser.states[:len(parser.states)-1]
@@ -955,7 +963,7 @@ func yaml_parser_parse_flow_sequence_entry(parser *yaml_parser_t, event *yaml_ev
 			}
 		}
 
-		if token.typ == yaml_KEY_TOKEN {
+		if token.typ == yaml_KEY_TOKEN || token.typ == yaml_VALUE_TOKEN {
 			parser.state = yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_KEY_STATE
 			*event = yaml_event_t{
 				typ:        yaml_MAPPING_START_EVENT,
@@ -964,7 +972,9 @@ func yaml_parser_parse_flow_sequence_entry(parser *yaml_parser_t, event *yaml_ev
 				implicit:   true,
 				style:      yaml_style_t(yaml_FLOW_MAPPING_STYLE),
 			}
-			skip_token(parser)
+			if token.typ == yaml_KEY_TOKEN {
+				skip_token(parser)
+			}
 			return true
 		} else if token.typ != yaml_FLOW_SEQUENCE_END_TOKEN {
 			parser.states = append(parser.states, yaml_PARSE_FLOW_SEQUENCE_ENTRY_STATE)
@@ -1004,7 +1014,6 @@ func yaml_parser_parse_flow_sequence_entry_mapping_key(parser *yaml_parser_t, ev
 		return yaml_parser_parse_node(parser, event, false, false)
 	}
 	mark := token.end_mark
-	skip_token(parser)
 	parser.state = yaml_PARSE_FLOW_SEQUENCE_ENTRY_MAPPING_VALUE_STATE
 	return yaml_parser_process_empty_scalar(parser, event, mark)
 }
@@ -1107,6 +1116,9 @@ func yaml_parser_parse_flow_mapping_key(parser *yaml_parser_t, event *yaml_event
 				parser.state = yaml_PARSE_FLOW_MAPPING_VALUE_STATE
 				return yaml_parser_process_empty_scalar(parser, event, token.start_mark)
 			}
+		} else if token.typ == yaml_VALUE_TOKEN && token.start_mark.index < token.end_mark.index { // A value token with a length
+			parser.state = yaml_PARSE_FLOW_MAPPING_VALUE_STATE
+			return yaml_parser_process_empty_scalar(parser, event, token.start_mark)
 		} else if token.typ != yaml_FLOW_MAPPING_END_TOKEN {
 			parser.states = append(parser.states, yaml_PARSE_FLOW_MAPPING_EMPTY_VALUE_STATE)
 			return yaml_parser_parse_node(parser, event, false, false)
@@ -1192,7 +1204,7 @@ func yaml_parser_process_directives(parser *yaml_parser_t,
 					"found duplicate %YAML directive", token.start_mark)
 				return false
 			}
-			if token.major != 1 || token.minor != 1 {
+			if token.major != 1 || (token.minor != 1 && token.minor != 2 && token.minor != 3) {
 				yaml_parser_set_parser_error(parser,
 					"found incompatible YAML document", token.start_mark)
 				return false

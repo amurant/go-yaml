@@ -25,6 +25,8 @@ package yaml
 import (
 	"fmt"
 	"io"
+
+	"gopkg.in/yaml.v3/reader"
 )
 
 // The version directive data.
@@ -431,26 +433,10 @@ type yaml_document_t struct {
 	start_mark, end_mark yaml_mark_t
 }
 
-// The prototype of a read handler.
-//
-// The read handler is called when the parser needs to read more bytes from the
-// source. The handler should write not more than size bytes to the buffer.
-// The number of written bytes should be set to the size_read variable.
-//
-// [in,out]   data        A pointer to an application data specified by
-//                        yaml_parser_set_input().
-// [out]      buffer      The buffer to write the data from the source.
-// [in]       size        The size of the buffer.
-// [out]      size_read   The actual number of bytes read from the source.
-//
-// On success, the handler should return 1.  If the handler failed,
-// the returned value should be 0. On EOF, the handler should set the
-// size_read to 0 and return 1.
-type yaml_read_handler_t func(parser *yaml_parser_t, buffer []byte) (n int, err error)
-
 // This structure holds information about a potential simple key.
 type yaml_simple_key_t struct {
 	possible     bool        // Is a simple key possible?
+	flow_level   int         // What flow level is the key at?
 	required     bool        // Is a simple key required?
 	token_number int         // The number of the token.
 	mark         yaml_mark_t // The position mark.
@@ -570,26 +556,15 @@ type yaml_parser_t struct {
 	context_mark yaml_mark_t
 
 	// Reader stuff
-
-	read_handler yaml_read_handler_t // Read handler.
-
-	input_reader io.Reader // File input data.
-	input        []byte    // String input data.
-	input_pos    int
-
-	eof bool // EOF flag
+	reader reader.UtfDecoder
 
 	buffer     []byte // The working buffer.
 	buffer_pos int    // The current position of the buffer.
 
 	unread int // The number of unread characters in the buffer.
 
-	newlines int // The number of line breaks since last non-break/non-blank character
-
-	raw_buffer     []byte // The raw buffer.
-	raw_buffer_pos int    // The current position of the buffer.
-
-	encoding yaml_encoding_t // The input encoding.
+	newlines  int // The number of line breaks since last non-break and non-blank character
+	nonBlanks int // The number of non-blank characters on the current line.
 
 	offset int         // The offset of the current position (in bytes).
 	mark   yaml_mark_t // The mark of the current position.
@@ -607,8 +582,12 @@ type yaml_parser_t struct {
 
 	// Scanner stuff
 
+	lookahead int // For testing this is set to 0, for parsing footer comments, this is set to 2
+
 	stream_start_produced bool // Have we started to scan the input stream?
 	stream_end_produced   bool // Have we reached the end of the input stream?
+	simple_key_allowed    bool // May a simple key occur at the current position?
+	value_token_allowed   bool // May a value token occur at the current position?
 
 	flow_level int // The number of unclosed '[' and '{' indicators.
 
@@ -617,12 +596,11 @@ type yaml_parser_t struct {
 	tokens_parsed   int            // The number of tokens fetched from the queue.
 	token_available bool           // Does the tokens queue contain a token ready for dequeueing.
 
-	indent  int   // The current indentation level.
-	indents []int // The indentation levels stack.
+	indent       int   // The current indentation level.
+	indent_stack []int // The indentation levels stack.
 
-	simple_key_allowed bool                // May a simple key occur at the current position?
-	simple_keys        []yaml_simple_key_t // The stack of simple keys.
-	simple_keys_by_tok map[int]int         // possible simple_key indexes indexed by token_number
+	simple_key       yaml_simple_key_t   // The last simple key.
+	simple_key_stack []yaml_simple_key_t // The stack of simple keys.
 
 	// Parser stuff
 
@@ -715,9 +693,6 @@ type yaml_emitter_t struct {
 
 	buffer     []byte // The working buffer.
 	buffer_pos int    // The current position of the buffer.
-
-	raw_buffer     []byte // The raw buffer.
-	raw_buffer_pos int    // The current position of the buffer.
 
 	encoding yaml_encoding_t // The stream encoding.
 
