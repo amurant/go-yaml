@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"testing"
 
 	"io"
 	"strings"
@@ -26,6 +27,12 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 )
+
+func TestNode(t *testing.T) { check.TestingT(t) }
+
+type SNode struct{}
+
+var _ = check.Suite(&SNode{})
 
 var nodeTests = []struct {
 	yaml string
@@ -2554,7 +2561,7 @@ var nodeTests = []struct {
 	},
 }
 
-func (s *S) TestNodeRoundtrip(c *check.C) {
+func (s *SNode) TestNodeRoundtrip(c *check.C) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range nodeTests {
@@ -2701,7 +2708,7 @@ var setStringTests = []struct {
 	},
 }
 
-func (s *S) TestSetString(c *check.C) {
+func (s *SNode) TestSetString(c *check.C) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range setStringTests {
@@ -2796,7 +2803,7 @@ var nodeEncodeDecodeTests = []struct {
 	},
 }}
 
-func (s *S) TestNodeEncodeDecode(c *check.C) {
+func (s *SNode) TestNodeEncodeDecode(c *check.C) {
 	for i, item := range nodeEncodeDecodeTests {
 		c.Logf("Encode/Decode test value #%d: %#v", i, item.value)
 
@@ -2812,7 +2819,7 @@ func (s *S) TestNodeEncodeDecode(c *check.C) {
 	}
 }
 
-func (s *S) TestNodeZeroEncodeDecode(c *check.C) {
+func (s *SNode) TestNodeZeroEncodeDecode(c *check.C) {
 	// Zero node value behaves as nil when encoding...
 	var n yaml.Node
 	data, err := yaml.Marshal(&n)
@@ -2834,7 +2841,7 @@ func (s *S) TestNodeZeroEncodeDecode(c *check.C) {
 	c.Assert(n.Decode(&v), check.ErrorMatches, "yaml: cannot decode node with unknown kind 0")
 }
 
-func (s *S) TestNodeOmitEmpty(c *check.C) {
+func (s *SNode) TestNodeOmitEmpty(c *check.C) {
 	var v struct {
 		A int
 		B yaml.Node ",omitempty"

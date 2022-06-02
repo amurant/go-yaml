@@ -21,6 +21,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"net"
@@ -29,6 +30,12 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 )
+
+func TestEncode(t *testing.T) { check.TestingT(t) }
+
+type SEncode struct{}
+
+var _ = check.Suite(&SEncode{})
 
 var marshalIntTest = 123
 
@@ -585,7 +592,7 @@ var marshalTests = []struct {
 	},
 }
 
-func (s *S) TestMarshal(c *check.C) {
+func (s *SEncode) TestMarshal(c *check.C) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range marshalTests {
@@ -596,7 +603,7 @@ func (s *S) TestMarshal(c *check.C) {
 	}
 }
 
-func (s *S) TestEncoderCompactIndents(c *check.C) {
+func (s *SEncode) TestEncoderCompactIndents(c *check.C) {
 	for i, item := range marshalTests {
 		c.Logf("test %d. %q", i, item.data)
 		var buf bytes.Buffer
@@ -610,7 +617,7 @@ func (s *S) TestEncoderCompactIndents(c *check.C) {
 	}
 }
 
-func (s *S) TestEncoderSingleDocument(c *check.C) {
+func (s *SEncode) TestEncoderSingleDocument(c *check.C) {
 	for i, item := range marshalTests {
 		c.Logf("test %d. %q", i, item.data)
 		var buf bytes.Buffer
@@ -623,7 +630,7 @@ func (s *S) TestEncoderSingleDocument(c *check.C) {
 	}
 }
 
-func (s *S) TestEncoderMultipleDocuments(c *check.C) {
+func (s *SEncode) TestEncoderMultipleDocuments(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	err := enc.Encode(map[string]string{"a": "b"})
@@ -635,7 +642,7 @@ func (s *S) TestEncoderMultipleDocuments(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "a: b\n---\nc: d\n")
 }
 
-func (s *S) TestEncoderWriteError(c *check.C) {
+func (s *SEncode) TestEncoderWriteError(c *check.C) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
 	c.Assert(err, check.ErrorMatches, `yaml: write error: some write error`) // Data not flushed yet
@@ -665,7 +672,7 @@ var marshalErrorTests = []struct {
 	panic: `cannot have key "a" in inlined map: conflicts with struct field`,
 }}
 
-func (s *S) TestMarshalErrors(c *check.C) {
+func (s *SEncode) TestMarshalErrors(c *check.C) {
 	for _, item := range marshalErrorTests {
 		if item.panic != "" {
 			c.Assert(func() { yaml.Marshal(item.value) }, check.PanicMatches, item.panic)
@@ -676,7 +683,7 @@ func (s *S) TestMarshalErrors(c *check.C) {
 	}
 }
 
-func (s *S) TestMarshalTypeCache(c *check.C) {
+func (s *SEncode) TestMarshalTypeCache(c *check.C) {
 	var data []byte
 	var err error
 	func() {
@@ -719,7 +726,7 @@ type marshalerValue struct {
 	Field marshalerType "_"
 }
 
-func (s *S) TestMarshaler(c *check.C) {
+func (s *SEncode) TestMarshaler(c *check.C) {
 	for _, item := range marshalerTests {
 		obj := &marshalerValue{}
 		obj.Field.value = item.value
@@ -729,7 +736,7 @@ func (s *S) TestMarshaler(c *check.C) {
 	}
 }
 
-func (s *S) TestMarshalerWholeDocument(c *check.C) {
+func (s *SEncode) TestMarshalerWholeDocument(c *check.C) {
 	obj := &marshalerType{}
 	obj.value = map[string]string{"hello": "world!"}
 	data, err := yaml.Marshal(obj)
@@ -743,12 +750,12 @@ func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
 	return nil, failingErr
 }
 
-func (s *S) TestMarshalerError(c *check.C) {
+func (s *SEncode) TestMarshalerError(c *check.C) {
 	_, err := yaml.Marshal(&failingMarshaler{})
 	c.Assert(err, check.Equals, failingErr)
 }
 
-func (s *S) TestSetIndent(c *check.C) {
+func (s *SEncode) TestSetIndent(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(8)
@@ -759,7 +766,7 @@ func (s *S) TestSetIndent(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "a:\n        b:\n                c: d\n")
 }
 
-func (s *S) TestCompactSeqIndentDefault(c *check.C) {
+func (s *SEncode) TestCompactSeqIndentDefault(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
@@ -774,7 +781,7 @@ func (s *S) TestCompactSeqIndentDefault(c *check.C) {
 `)
 }
 
-func (s *S) TestCompactSequenceWithSetIndent(c *check.C) {
+func (s *SEncode) TestCompactSequenceWithSetIndent(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
@@ -790,7 +797,7 @@ func (s *S) TestCompactSequenceWithSetIndent(c *check.C) {
 `)
 }
 
-func (s *S) TestNewLinePreserved(c *check.C) {
+func (s *SEncode) TestNewLinePreserved(c *check.C) {
 	obj := &marshalerValue{}
 	obj.Field.value = "a:\n        b:\n                c: d\n"
 	data, err := yaml.Marshal(obj)
@@ -804,7 +811,7 @@ func (s *S) TestNewLinePreserved(c *check.C) {
 	c.Assert(string(data), check.Equals, "_: |4\n\n    a:\n            b:\n                    c: d\n")
 }
 
-func (s *S) TestSortedOutput(c *check.C) {
+func (s *SEncode) TestSortedOutput(c *check.C) {
 	order := []interface{}{
 		false,
 		true,

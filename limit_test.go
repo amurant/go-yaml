@@ -42,7 +42,13 @@ var limitTests = []struct {
 	{name: "1000kb of 10000-nested lines", data: []byte(strings.Repeat(`- `+strings.Repeat(`[`, 10000)+strings.Repeat(`]`, 10000)+"\n", 1000*1024/20000))},
 }
 
-func (s *S) TestLimits(c *check.C) {
+func TestLimit(t *testing.T) { check.TestingT(t) }
+
+type SLimit struct{}
+
+var _ = check.Suite(&SLimit{})
+
+func (s *SLimit) TestLimits(c *check.C) {
 	if testing.Short() {
 		return
 	}
