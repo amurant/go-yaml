@@ -502,6 +502,16 @@ import (
 //      BLOCK-END
 //
 
+// HasPrefix checks if first 4 bytes of a and b are equal
+// [Go] Golang fully inlines this function, making it supper fast
+func HasPrefix(a []byte, b ...byte) bool {
+	// TODO: add benchmark to make sure this is inlined in new versions of Go
+	return ((len(b) < 1) || ((len(a) >= 1) && (a[0] == b[0]))) &&
+		((len(b) < 2) || ((len(a) >= 2) && (a[1] == b[1]))) &&
+		((len(b) < 3) || ((len(a) >= 3) && (a[2] == b[2]))) &&
+		((len(b) < 4) || ((len(a) >= 4) && (a[3] == b[3])))
+}
+
 // Ensure that the buffer contains the required number of characters.
 // Return true on success, false on failure (reader error or memory error).
 func cache(parser *yaml_parser_t, length int) bool {
