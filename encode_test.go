@@ -26,7 +26,7 @@ import (
 	"net"
 	"os"
 
-	. "gopkg.in/check.v1"
+	"gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -585,60 +585,60 @@ var marshalTests = []struct {
 	},
 }
 
-func (s *S) TestMarshal(c *C) {
+func (s *S) TestMarshal(c *check.C) {
 	defer os.Setenv("TZ", os.Getenv("TZ"))
 	os.Setenv("TZ", "UTC")
 	for i, item := range marshalTests {
 		c.Logf("test %d: %q", i, item.data)
 		data, err := yaml.Marshal(item.value)
-		c.Assert(err, IsNil)
-		c.Assert(string(data), Equals, item.data)
+		c.Assert(err, check.IsNil)
+		c.Assert(string(data), check.Equals, item.data)
 	}
 }
 
-func (s *S) TestEncoderCompactIndents(c *C) {
+func (s *S) TestEncoderCompactIndents(c *check.C) {
 	for i, item := range marshalTests {
 		c.Logf("test %d. %q", i, item.data)
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
 		enc.CompactSeqIndent()
 		err := enc.Encode(item.value)
-		c.Assert(err, Equals, nil)
+		c.Assert(err, check.Equals, nil)
 		err = enc.Close()
-		c.Assert(err, Equals, nil)
-		c.Assert(buf.String(), Equals, item.compact)
+		c.Assert(err, check.Equals, nil)
+		c.Assert(buf.String(), check.Equals, item.compact)
 	}
 }
 
-func (s *S) TestEncoderSingleDocument(c *C) {
+func (s *S) TestEncoderSingleDocument(c *check.C) {
 	for i, item := range marshalTests {
 		c.Logf("test %d. %q", i, item.data)
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
 		err := enc.Encode(item.value)
-		c.Assert(err, Equals, nil)
+		c.Assert(err, check.Equals, nil)
 		err = enc.Close()
-		c.Assert(err, Equals, nil)
-		c.Assert(buf.String(), Equals, item.data)
+		c.Assert(err, check.Equals, nil)
+		c.Assert(buf.String(), check.Equals, item.data)
 	}
 }
 
-func (s *S) TestEncoderMultipleDocuments(c *C) {
+func (s *S) TestEncoderMultipleDocuments(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	err := enc.Encode(map[string]string{"a": "b"})
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	err = enc.Encode(map[string]string{"c": "d"})
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
-	c.Assert(buf.String(), Equals, "a: b\n---\nc: d\n")
+	c.Assert(err, check.Equals, nil)
+	c.Assert(buf.String(), check.Equals, "a: b\n---\nc: d\n")
 }
 
-func (s *S) TestEncoderWriteError(c *C) {
+func (s *S) TestEncoderWriteError(c *check.C) {
 	enc := yaml.NewEncoder(errorWriter{})
 	err := enc.Encode(map[string]string{"a": "b"})
-	c.Assert(err, ErrorMatches, `yaml: write error: some write error`) // Data not flushed yet
+	c.Assert(err, check.ErrorMatches, `yaml: write error: some write error`) // Data not flushed yet
 }
 
 type errorWriter struct{}
@@ -665,31 +665,31 @@ var marshalErrorTests = []struct {
 	panic: `cannot have key "a" in inlined map: conflicts with struct field`,
 }}
 
-func (s *S) TestMarshalErrors(c *C) {
+func (s *S) TestMarshalErrors(c *check.C) {
 	for _, item := range marshalErrorTests {
 		if item.panic != "" {
-			c.Assert(func() { yaml.Marshal(item.value) }, PanicMatches, item.panic)
+			c.Assert(func() { yaml.Marshal(item.value) }, check.PanicMatches, item.panic)
 		} else {
 			_, err := yaml.Marshal(item.value)
-			c.Assert(err, ErrorMatches, item.error)
+			c.Assert(err, check.ErrorMatches, item.error)
 		}
 	}
 }
 
-func (s *S) TestMarshalTypeCache(c *C) {
+func (s *S) TestMarshalTypeCache(c *check.C) {
 	var data []byte
 	var err error
 	func() {
 		type T struct{ A int }
 		data, err = yaml.Marshal(&T{})
-		c.Assert(err, IsNil)
+		c.Assert(err, check.IsNil)
 	}()
 	func() {
 		type T struct{ B int }
 		data, err = yaml.Marshal(&T{})
-		c.Assert(err, IsNil)
+		c.Assert(err, check.IsNil)
 	}()
-	c.Assert(string(data), Equals, "b: 0\n")
+	c.Assert(string(data), check.Equals, "b: 0\n")
 }
 
 var marshalerTests = []struct {
@@ -719,22 +719,22 @@ type marshalerValue struct {
 	Field marshalerType "_"
 }
 
-func (s *S) TestMarshaler(c *C) {
+func (s *S) TestMarshaler(c *check.C) {
 	for _, item := range marshalerTests {
 		obj := &marshalerValue{}
 		obj.Field.value = item.value
 		data, err := yaml.Marshal(obj)
-		c.Assert(err, IsNil)
-		c.Assert(string(data), Equals, string(item.data))
+		c.Assert(err, check.IsNil)
+		c.Assert(string(data), check.Equals, string(item.data))
 	}
 }
 
-func (s *S) TestMarshalerWholeDocument(c *C) {
+func (s *S) TestMarshalerWholeDocument(c *check.C) {
 	obj := &marshalerType{}
 	obj.value = map[string]string{"hello": "world!"}
 	data, err := yaml.Marshal(obj)
-	c.Assert(err, IsNil)
-	c.Assert(string(data), Equals, "hello: world!\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(data), check.Equals, "hello: world!\n")
 }
 
 type failingMarshaler struct{}
@@ -743,68 +743,68 @@ func (ft *failingMarshaler) MarshalYAML() (interface{}, error) {
 	return nil, failingErr
 }
 
-func (s *S) TestMarshalerError(c *C) {
+func (s *S) TestMarshalerError(c *check.C) {
 	_, err := yaml.Marshal(&failingMarshaler{})
-	c.Assert(err, Equals, failingErr)
+	c.Assert(err, check.Equals, failingErr)
 }
 
-func (s *S) TestSetIndent(c *C) {
+func (s *S) TestSetIndent(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(8)
 	err := enc.Encode(map[string]interface{}{"a": map[string]interface{}{"b": map[string]string{"c": "d"}}})
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
-	c.Assert(buf.String(), Equals, "a:\n        b:\n                c: d\n")
+	c.Assert(err, check.Equals, nil)
+	c.Assert(buf.String(), check.Equals, "a:\n        b:\n                c: d\n")
 }
 
-func (s *S) TestCompactSeqIndentDefault(c *C) {
+func (s *S) TestCompactSeqIndentDefault(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
 	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	// The default indent is 4, so these sequence elements get 2 indents as before
-	c.Assert(buf.String(), Equals, `a:
+	c.Assert(buf.String(), check.Equals, `a:
   - b
   - c
 `)
 }
 
-func (s *S) TestCompactSequenceWithSetIndent(c *C) {
+func (s *S) TestCompactSequenceWithSetIndent(c *check.C) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.CompactSeqIndent()
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]interface{}{"a": []string{"b", "c"}})
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	err = enc.Close()
-	c.Assert(err, Equals, nil)
+	c.Assert(err, check.Equals, nil)
 	// The sequence indent is 2, so these sequence elements don't get indented at all
-	c.Assert(buf.String(), Equals, `a:
+	c.Assert(buf.String(), check.Equals, `a:
 - b
 - c
 `)
 }
 
-func (s *S) TestNewLinePreserved(c *C) {
+func (s *S) TestNewLinePreserved(c *check.C) {
 	obj := &marshalerValue{}
 	obj.Field.value = "a:\n        b:\n                c: d\n"
 	data, err := yaml.Marshal(obj)
-	c.Assert(err, IsNil)
-	c.Assert(string(data), Equals, "_: |\n    a:\n            b:\n                    c: d\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(data), check.Equals, "_: |\n    a:\n            b:\n                    c: d\n")
 
 	obj.Field.value = "\na:\n        b:\n                c: d\n"
 	data, err = yaml.Marshal(obj)
-	c.Assert(err, IsNil)
+	c.Assert(err, check.IsNil)
 	// the newline at the start of the file should be preserved
-	c.Assert(string(data), Equals, "_: |4\n\n    a:\n            b:\n                    c: d\n")
+	c.Assert(string(data), check.Equals, "_: |4\n\n    a:\n            b:\n                    c: d\n")
 }
 
-func (s *S) TestSortedOutput(c *C) {
+func (s *S) TestSortedOutput(c *check.C) {
 	order := []interface{}{
 		false,
 		true,
@@ -858,7 +858,7 @@ func (s *S) TestSortedOutput(c *C) {
 		m[k] = 1
 	}
 	data, err := yaml.Marshal(m)
-	c.Assert(err, IsNil)
+	c.Assert(err, check.IsNil)
 	out := "\n" + string(data)
 	last := 0
 	for i, k := range order {
